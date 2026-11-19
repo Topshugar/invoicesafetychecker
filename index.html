@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Invoice Safety Checker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f6f7f9;color:#111}
+.top{background:#000;color:#fff;padding:18px 16px 20px;text-align:center}
+.top h1{font-size:20px;margin:0}
+.top p{font-size:13px;opacity:.8;margin:6px 0 0}
+.wrap{max-width:520px;margin:-10px auto 0;padding:0 14px 30px}
+.card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+.label{font-size:13px;font-weight:700;margin:4px 0 8px}
+textarea{width:100%;min-height:180px;padding:12px;border:1px solid #ddd;border-radius:12px;font-size:15px;outline:none;resize:vertical}
+textarea:focus{border-color:#000}
+.btn{width:100%;padding:15px;border:none;border-radius:12px;background:#000;color:#fff;font-size:16px;font-weight:700;margin-top:12px}
+.btn:active{opacity:.85}
+.result{margin-top:14px;border-radius:12px;padding:14px;font-size:14px;line-height:1.6;display:none}
+.result.safe{background:#e8f8ec;border:1px solid #b6e3c0}
+.result.danger{background:#fdecec;border:1px solid #f5b5b5}
+.result h3{margin:0 0 8px;font-size:16px}
+.small{font-size:12px;color:#666;text-align:center;margin-top:14px;line-height:1.5}
+.badge{display:inline-block;background:#fff2cc;border:1px solid #e6c87a;color:#7a5a00;font-size:11px;padding:4px 8px;border-radius:20px;margin-top:8px}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>Invoice Safety Checker</h1>
+  <p>Safety check ONLY • No payments • No cards</p>
+  <span class="badge">MOBILE READY</span>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <div class="label">Paste invoice text</div>
+    <textarea id="invoiceText" placeholder="Paste the full invoice text here...&#10;&#10;Example:&#10;Company name...&#10;Bank details...&#10;Payment link..."></textarea>
+    <button class="btn" onclick="checkInvoice()">Check Invoice →</button>
+    <div id="result" class="result"></div>
+  </div>
+
+  <p class="small">This tool only flags common scam patterns.<br>Always verify bank details by calling the company on its official website number before paying.</p>
+</div>
+
+<script>
+function checkInvoice(){
+  const text = document.getElementById('invoiceText').value.toLowerCase();
+  const box = document.getElementById('result');
+  box.style.display='block';
+  let flags = [];
+
+  if(!text.trim()){
+    box.className='result danger';
+    box.innerHTML='<h3>Paste an invoice first</h3>';
+    return;
+  }
+  if(text.includes('myshopify') || text.includes('shopify') || text.includes('pay by link') || text.includes('pay by qr'))
+    flags.push('Pay-by-link / Shopify checkout for B2B invoice - real B2B uses bank transfer');
+  if(text.includes('account might be change') || text.includes('might be change') || text.includes('account might change') || text.includes('account may change'))
+    flags.push('Bank account "might change" - classic scam line');
+  if(text.includes('passport'))
+    flags.push('Passport number on invoice - real invoices do not include this');
+  if(text.includes('cis') || text.includes('contact of issuer'))
+    flags.push('CIS provided by sender - do not trust it. Verify via bank official website only');
+  if(text.includes('whatsapp') && text.includes('payment'))
+    flags.push('Payment discussed only on WhatsApp - high risk');
+  if(text.includes('urgent') && text.includes('pay today'))
+    flags.push('Urgent pressure to pay today - common scam tactic');
+
+  if(flags.length === 0){
+    box.className='result safe';
+    box.innerHTML='<h3>✅ No obvious red flags found</h3>Still verify bank details on official number before paying.';
+  } else {
+    box.className='result danger';
+    box.innerHTML='<h3>⛔ DO NOT PROCEED</h3>' + flags.map(f=>'<div>• '+f+'</div>').join('');
+  }
+  window.scrollTo({top: document.body.scrollHeight, behavior:'smooth'});
+}
+</script>
+</body>
+</html>
