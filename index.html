@@ -6,147 +6,181 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f6f7f9;color:#111}
-.top{background:#000;color:#fff;padding:18px 16px 20px;text-align:center}
-.top h1{font-size:20px;margin:0}
-.top p{font-size:13px;opacity:.8;margin:6px 0 0}
-.wrap{max-width:520px;margin:-10px auto 0;padding:0 14px 30px}
-.card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:12px}
+:root{--bg:#f6f7f9;--card:#fff;--text:#111;--border:#ddd;--muted:#666;--top:#000}
+body.dark{--bg:#0f1115;--card:#1a1d23;--text:#f1f1f1;--border:#2a2e37;--muted:#9aa0aa;--top:#000}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);transition:.2s}
+.top{background:var(--top);color:#fff;padding:14px 16px 16px;text-align:center;position:sticky;top:0;z-index:10}
+.logo-row{display:flex;align-items:center;justify-content:center;gap:10px}
+.logo{width:44px;height:44px;background:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.logo-text{text-align:left;line-height:1.1}
+.logo-text b{font-size:19px;display:block}
+.logo-text span{font-size:11px;opacity:.8;letter-spacing:1px}
+.top p{font-size:12px;opacity:.8;margin:8px 0 0}
+.dark-btn{position:absolute;right:12px;top:14px;background:#fff;color:#000;border:none;border-radius:20px;padding:7px 12px;font-size:13px;font-weight:700}
+.tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:86px;z-index:10}
+.tabs button{flex:1;padding:14px;border:none;background:transparent;color:var(--text);font-weight:700;font-size:15px}
+.tabs button.active{border-bottom:3px solid #000}
+body.dark .tabs button.active{border-bottom-color:#fff}
+.wrap{max-width:520px;margin:0 auto;padding:14px 14px 30px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:12px}
 .label{font-size:13px;font-weight:700;margin:12px 0 6px}
 .label:first-child{margin-top:0}
-.hint{font-size:12px;color:#666;margin:-2px 0 6px}
-input,textarea,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:12px;font-size:15px;outline:none}
+.hint{font-size:12px;color:var(--muted);margin:-2px 0 6px}
+input,textarea,select{width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;font-size:15px;outline:none;background:var(--card);color:var(--text)}
 input:focus,textarea:focus,select:focus{border-color:#000}
-textarea{min-height:120px;resize:vertical}
+body.dark input:focus,body.dark textarea:focus{border-color:#fff}
+textarea{min-height:110px;resize:vertical}
 .btn{width:100%;padding:15px;border:none;border-radius:12px;background:#000;color:#fff;font-size:16px;font-weight:700;margin-top:14px}
+body.dark .btn{background:#fff;color:#000}
 .btn:active{opacity:.85}
-.btn2{width:100%;padding:12px;border:1px dashed #bbb;border-radius:12px;background:#fafafa;font-size:14px;margin-top:6px}
-.upload{border:2px dashed #ddd;border-radius:12px;padding:16px;text-align:center;background:#fafafa}
+.btn-white{width:100%;padding:13px;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);font-size:14px;font-weight:700;margin-top:10px}
+.btn-green{background:#16a34a!important;color:#fff!important}
+.upload{border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;background:var(--bg);display:block}
 .upload input{display:none}
 .upload b{font-size:14px}
-.upload p{font-size:12px;color:#666;margin:6px 0 0}
+.upload p{font-size:12px;color:var(--muted);margin:6px 0 0}
 .preview{max-width:100%;border-radius:10px;margin-top:10px;display:none}
-.result{margin-top:14px;border-radius:12px;padding:14px;font-size:14px;line-height:1.6;display:none}
+.result{margin-top:14px;border-radius:12px;padding:14px;font-size:14px;line-height:1.6;display:none;color:#111}
 .result.safe{background:#e8f8ec;border:1px solid #b6e3c0}
 .result.danger{background:#fdecec;border:1px solid #f5b5b5}
 .result.warn{background:#fff8e1;border:1px solid #e6c87a}
 .result h3{margin:0 0 8px;font-size:16px}
-.small{font-size:12px;color:#666;text-align:center;margin-top:14px;line-height:1.5}
+.small{font-size:12px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.5}
 .row{display:flex;gap:10px}
 .row>div{flex:1}
 .score{font-size:28px;font-weight:800;margin:4px 0}
-.status{font-size:13px;color:#333;margin-top:8px;display:none}
+.status{font-size:13px;color:var(--text);margin-top:8px;display:none}
+.history-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
+.history-item b{font-size:14px}
+.history-item p{font-size:12px;color:var(--muted);margin:4px 0}
+.pill{display:inline-block;font-size:11px;padding:4px 8px;border-radius:20px;font-weight:700;color:#111}
+.pill.safe{background:#d1fae5}
+.pill.danger{background:#fee2e2}
+.pill.warn{background:#fef3c7}
+.brand-footer{text-align:center;margin-top:20px;opacity:.6}
+.brand-footer .mini-logo{font-size:28px}
 </style>
 </head>
 <body>
 
-<div class="top">
-  <h1>Invoice Safety Checker</h1>
+<div class="top" style="position:relative">
+  <button class="dark-btn" onclick="toggleDark()">🌙 Dark</button>
+  <div class="logo-row">
+    <div class="logo">🛡️</div>
+    <div class="logo-text">
+      <b>SafeInvoice</b>
+      <span>INVOICE SAFETY CHECKER</span>
+    </div>
+  </div>
   <p>Safety check ONLY • No payments • No cards</p>
 </div>
 
-<div class="wrap">
+<div class="tabs">
+  <button id="tabCheck" class="active" onclick="showTab('check')">Check</button>
+  <button id="tabHistory" onclick="showTab('history')">History (<span id="histCount">0</span>)</button>
+</div>
+
+<div id="pageCheck" class="wrap">
   <div class="card">
-    <div class="label">1. Upload invoice (NEW) or paste below</div>
+    <div class="label">1. Upload invoice or paste</div>
     <label class="upload" for="fileInput">
       <b>📄 Tap to upload PDF / Screenshot</b>
-      <p>PDF, JPG, PNG • File stays on your phone, not uploaded to server</p>
+      <p>PDF, JPG, PNG • Stays on your phone</p>
       <input type="file" id="fileInput" accept=".pdf,image/*">
     </label>
     <div id="status" class="status"></div>
     <img id="preview" class="preview">
-
     <div class="label">Invoice text</div>
-    <textarea id="invoiceText" placeholder="Paste here OR upload above and it will auto-fill..."></textarea>
-
-    <div class="label">2. Company name on invoice</div>
+    <textarea id="invoiceText" placeholder="Paste here OR upload above..."></textarea>
+    <div class="label">2. Company name</div>
     <input id="companyName" placeholder="e.g. QVS Trading Ltd">
-
-    <div class="label">3. Bank account name (beneficiary)</div>
+    <div class="label">3. Bank account name</div>
     <input id="bankName" placeholder="e.g. John Smith or ABC Ltd">
-
     <div class="label">4. IBAN / Bank country</div>
     <div class="row">
       <div><input id="iban" placeholder="IBAN e.g. DE89..."></div>
       <div>
         <select id="bankCountry">
           <option value="">Bank country...</option>
-          <option value="DE">Germany (DE)</option>
-          <option value="GB">UK (GB)</option>
-          <option value="FR">France (FR)</option>
-          <option value="IT">Italy (IT)</option>
-          <option value="ES">Spain (ES)</option>
-          <option value="NL">Netherlands (NL)</option>
-          <option value="AE">UAE (AE)</option>
-          <option value="US">USA (US)</option>
-          <option value="TR">Turkey (TR)</option>
-          <option value="CN">China (CN)</option>
-          <option value="OTHER">Other</option>
+          <option value="DE">Germany (DE)</option><option value="GB">UK (GB)</option><option value="FR">France (FR)</option>
+          <option value="IT">Italy (IT)</option><option value="ES">Spain (ES)</option><option value="NL">Netherlands (NL)</option>
+          <option value="AE">UAE (AE)</option><option value="US">USA (US)</option><option value="TR">Turkey (TR)</option><option value="CN">China (CN)</option><option value="OTHER">Other</option>
         </select>
       </div>
     </div>
-
     <div class="label">5. Email check</div>
-    <input id="senderEmail" placeholder="Sender email e.g. sales@qvs-trading.com" style="margin-bottom:10px">
+    <input id="senderEmail" placeholder="Sender email" style="margin-bottom:10px">
     <input id="websiteDomain" placeholder="Official website e.g. qvs-trading.com">
-
     <button class="btn" onclick="checkInvoice()">Check Invoice →</button>
-    <div id="result" class="result"></div>
+    <div id="shareArea">
+      <div id="result" class="result"></div>
+    </div>
+    <button id="shareBtn" class="btn btn-green" onclick="shareResult()" style="display:none">📤 Share Result as Image</button>
+    <button class="btn-white" onclick="clearForm()">Clear Form</button>
   </div>
-  <p class="small">File is processed on your device only.<br>Always verify bank details on official website number before paying.</p>
+  <div class="brand-footer"><div class="mini-logo">🛡️</div><div style="font-size:12px">SafeInvoice • Protect your payment</div></div>
+  <p class="small">Always verify bank details on official website number before paying.</p>
+</div>
+
+<div id="pageHistory" class="wrap" style="display:none">
+  <div class="card">
+    <b>Past Checks</b>
+    <p style="font-size:13px;color:var(--muted)">Saved only on this phone. No data sent to server.</p>
+    <button class="btn-white" onclick="exportCSV()">⬇ Export History to CSV</button>
+    <button class="btn-white" onclick="clearHistory()">🗑 Clear All History</button>
+  </div>
+  <div id="historyList"></div>
 </div>
 
 <script>
+// Dark mode - saved
+if(localStorage.getItem('darkMode')==='1'){ document.body.classList.add('dark'); }
+function toggleDark(){
+  document.body.classList.toggle('dark');
+  localStorage.setItem('darkMode', document.body.classList.contains('dark')?'1':'0');
+  document.querySelector('.dark-btn').textContent = document.body.classList.contains('dark') ? '☀️ Light' : '🌙 Dark';
+}
+if(document.body.classList.contains('dark')) document.querySelector('.dark-btn').textContent='☀️ Light';
+
 const countryNames = {DE:'Germany',GB:'UK',FR:'France',IT:'Italy',ES:'Spain',NL:'Netherlands',AE:'UAE',US:'USA',TR:'Turkey',CN:'China'};
+let lastCheck = null;
+function showTab(t){
+  document.getElementById('pageCheck').style.display = t==='check'?'block':'none';
+  document.getElementById('pageHistory').style.display = t==='history'?'block':'none';
+  document.getElementById('tabCheck').classList.toggle('active', t==='check');
+  document.getElementById('tabHistory').classList.toggle('active', t==='history');
+  if(t==='history') renderHistory();
+}
 function cleanName(s){ return s.toLowerCase().replace(/ltd|limited|llc|inc|gmbh|co\.|company|trading|group/g,'').replace(/[^a-z0-9 ]/g,'').trim(); }
 function getDomain(email){ const m = email.trim().toLowerCase().match(/@([a-z0-9.-]+)/); return m ? m[1] : ''; }
 function cleanDomain(d){ return d.trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*$/,''); }
 
-// --- UPLOAD HANDLER ---
 document.getElementById('fileInput').addEventListener('change', async function(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  const status = document.getElementById('status');
-  const preview = document.getElementById('preview');
-  status.style.display='block';
-  status.textContent = 'Reading file...';
-
-  // Auto-detect IBAN / Email / Company from text helper
+  const file = e.target.files[0]; if(!file) return;
+  const status = document.getElementById('status'); const preview = document.getElementById('preview');
+  status.style.display='block'; status.textContent='Reading file...';
   function autoFill(text){
     document.getElementById('invoiceText').value = text;
-    // IBAN: 2 letters + 2 digits + ...
     const ibanMatch = text.match(/\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/);
     if(ibanMatch) document.getElementById('iban').value = ibanMatch[0];
-    // Email
     const emailMatch = text.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i);
     if(emailMatch) document.getElementById('senderEmail').value = emailMatch[0];
-    status.textContent = '✅ Done! Check auto-filled fields, then tap Check Invoice.';
+    status.textContent='✅ Done! Check fields, then tap Check Invoice.';
   }
-
-  if(file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')){
+  if(file.type==='application/pdf' || file.name.toLowerCase().endsWith('.pdf')){
     try{
       const buf = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({data: buf}).promise;
-      let full = '';
-      for(let i=1;i<=pdf.numPages;i++){
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        full += content.items.map(it=>it.str).join(' ') + '\n';
-      }
+      const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+      let full=''; for(let i=1;i<=pdf.numPages;i++){ const page=await pdf.getPage(i); const c=await page.getTextContent(); full+=c.items.map(it=>it.str).join(' ')+'\n'; }
       autoFill(full);
-    }catch(err){ status.textContent = 'Could not read PDF. Please paste text manually.'; }
+    }catch(err){ status.textContent='Could not read PDF. Paste manually.'; }
   } else if(file.type.startsWith('image/')){
-    const url = URL.createObjectURL(file);
-    preview.src = url; preview.style.display='block';
-    status.textContent = 'Reading image text (OCR)... this may take 10-20 sec';
-    try{
-      const { data } = await Tesseract.recognize(file, 'eng');
-      autoFill(data.text);
-    }catch(err){ status.textContent = 'OCR failed. Please type/paste text manually.'; }
-  } else {
-    status.textContent = 'Please upload PDF or image.';
+    const url=URL.createObjectURL(file); preview.src=url; preview.style.display='block';
+    status.textContent='Reading image (OCR)... 10-20 sec';
+    try{ const {data}=await Tesseract.recognize(file,'eng'); autoFill(data.text); }catch(err){ status.textContent='OCR failed. Paste manually.'; }
   }
 });
 
@@ -160,46 +194,95 @@ function checkInvoice(){
   const websiteDomain = cleanDomain(document.getElementById('websiteDomain').value);
   const box = document.getElementById('result');
   box.style.display='block';
-  let flags = []; let infos = []; let score = 100;
-
+  let flags=[]; let infos=[]; let score=100;
   if(!text.trim()){ box.className='result danger'; box.innerHTML='<h3>Paste or upload invoice first</h3>'; return; }
-
-  if(text.includes('myshopify') || text.includes('shopify') || text.includes('pay by link') || text.includes('pay by qr')){ flags.push('Pay-by-link / Shopify checkout for B2B invoice'); score-=30; }
-  if(text.includes('account might be change') || text.includes('might be change') || text.includes('account might change')){ flags.push('Bank account "might change" - classic scam line'); score-=30; }
-  if(text.includes('passport')){ flags.push('Passport number on invoice'); score-=20; }
-  if(text.includes('cis') || text.includes('contact of issuer')){ flags.push('CIS provided by sender - do not trust it'); score-=10; }
-
+  if(text.includes('myshopify') || text.includes('shopify') || text.includes('pay by link')){ flags.push('Pay-by-link / Shopify for B2B'); score-=30; }
+  if(text.includes('account might be change') || text.includes('might be change')){ flags.push('Bank account "might change" - scam line'); score-=30; }
+  if(text.includes('passport')){ flags.push('Passport on invoice'); score-=20; }
+  if(text.includes('cis')){ flags.push('CIS from sender - do not trust'); score-=10; }
   if(company && beneficiary){
-    const c = cleanName(company); const b = cleanName(beneficiary);
-    const cWords = c.split(' ').filter(w=>w.length>3);
-    const match = cWords.some(w=>b.includes(w));
-    if(!match){ flags.push(`Name mismatch: Invoice "${company}" but bank "${beneficiary}"`); score-=25; }
-    else infos.push('Company name matches bank account name');
+    const c=cleanName(company); const b=cleanName(beneficiary);
+    const cWords=c.split(' ').filter(w=>w.length>3);
+    const match=cWords.some(w=>b.includes(w));
+    if(!match){ flags.push(`Name mismatch: "${company}" vs bank "${beneficiary}"`); score-=25; }
+    else infos.push('Company matches bank name');
   }
-  if(iban.length >= 2 && bankCountry && bankCountry !== 'OTHER'){
-    const ibanCountry = iban.slice(0,2);
-    if(ibanCountry !== bankCountry){ flags.push(`IBAN mismatch: IBAN ${ibanCountry} but bank country ${bankCountry}`); score-=25; }
-    else infos.push(`IBAN country matches: ${ibanCountry}`);
-    if(iban.length < 15 || iban.length > 34){ flags.push('IBAN length wrong (15-34)'); score-=10; }
+  if(iban.length>=2 && bankCountry && bankCountry!=='OTHER'){
+    const ic=iban.slice(0,2);
+    if(ic!==bankCountry){ flags.push(`IBAN mismatch: ${ic} vs ${bankCountry}`); score-=25; }
+    else infos.push(`IBAN matches: ${ic}`);
+    if(iban.length<15||iban.length>34){ flags.push('IBAN length wrong'); score-=10; }
   }
   if(senderEmail && websiteDomain){
-    const emailDomain = getDomain(senderEmail);
-    if(!emailDomain){ flags.push('Sender email invalid'); score-=10; }
-    else if(emailDomain === websiteDomain){ infos.push(`Email domain matches website: ${emailDomain}`); }
+    const ed=getDomain(senderEmail);
+    if(!ed){ flags.push('Email invalid'); score-=10; }
+    else if(ed===websiteDomain){ infos.push(`Email matches: ${ed}`); }
     else {
-      const free = ['gmail.com','yahoo.com','hotmail.com','outlook.com','protonmail.com','gmx.com','yandex.com','mail.com'];
-      if(free.includes(emailDomain)){ flags.push(`Free email used: ${senderEmail} - real company uses @${websiteDomain}`); score-=30; }
-      else { flags.push(`Email mismatch: @${emailDomain} vs official ${websiteDomain}`); score-=30; }
+      const free=['gmail.com','yahoo.com','hotmail.com','outlook.com','protonmail.com','gmx.com'];
+      if(free.includes(ed)){ flags.push(`Free email: ${senderEmail} - real uses @${websiteDomain}`); score-=30; }
+      else { flags.push(`Email mismatch: @${ed} vs ${websiteDomain}`); score-=30; }
     }
   }
-
   if(score<0) score=0;
-  const scoreHtml = `<div class="score">${score}/100</div><div>Trust Score</div>`;
-  if(flags.length === 0){ box.className='result safe'; box.innerHTML = scoreHtml + '<h3>✅ No obvious red flags</h3>' + infos.map(i=>'<div>• '+i+'</div>').join('') + '<br>Still verify on official number.'; }
-  else if(score < 50){ box.className='result danger'; box.innerHTML = scoreHtml + '<h3>⛔ DO NOT PROCEED</h3>' + flags.map(f=>'<div>• '+f+'</div>').join('') + (infos.length?'<br><b>Passed:</b><br>'+infos.map(i=>'<div>• '+i+'</div>').join(''):''); }
-  else { box.className='result warn'; box.innerHTML = scoreHtml + '<h3>⚠️ CAUTION</h3>' + flags.map(f=>'<div>• '+f+'</div>').join('') + (infos.length?'<br><b>Passed:</b><br>'+infos.map(i=>'<div>• '+i+'</div>').join(''):''); }
+  let verdict='SAFE', cls='safe', title='✅ No obvious red flags';
+  if(flags.length>0 && score<50){ verdict='HIGH RISK'; cls='danger'; title='⛔ DO NOT PROCEED'; }
+  else if(flags.length>0){ verdict='CAUTION'; cls='warn'; title='⚠️ CAUTION'; }
+  const scoreHtml=`<div style="display:flex;align-items:center;gap:10px"><div style="font-size:30px">🛡️</div><div><div class="score" style="margin:0">${score}/100</div><div>SafeInvoice • ${verdict}</div></div></div>`;
+  box.className='result '+cls;
+  box.innerHTML= scoreHtml + `<h3>${title}</h3><div><b>Company:</b> ${company||'-'}<br><b>Bank:</b> ${beneficiary||'-'}<br><b>Email:</b> ${senderEmail||'-'}</div><br>` + flags.map(f=>'<div>• '+f+'</div>').join('') + (infos.length?'<br><b>Passed:</b><br>'+infos.map(i=>'<div>• '+i+'</div>').join(''):'');
+  document.getElementById('shareBtn').style.display='block';
+  lastCheck = { date:new Date().toLocaleString(), company:company||'Unknown', email:senderEmail||'', score, verdict, flags, infos };
+  const hist = JSON.parse(localStorage.getItem('invoiceHistory')||'[]');
+  hist.unshift(lastCheck);
+  localStorage.setItem('invoiceHistory', JSON.stringify(hist.slice(0,50)));
+  document.getElementById('histCount').textContent = hist.length;
   window.scrollTo({top: document.body.scrollHeight, behavior:'smooth'});
 }
+
+async function shareResult(){
+  if(!lastCheck) return;
+  const el = document.getElementById('shareArea');
+  try{
+    const canvas = await html2canvas(el, {backgroundColor:'#f6f7f9', scale:2});
+    canvas.toBlob(async (blob)=>{
+      const file = new File([blob], 'safeinvoice-check.png', {type:'image/png'});
+      if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], title:'SafeInvoice Check', text:`SafeInvoice: ${lastCheck.company} - ${lastCheck.score}/100 - ${lastCheck.verdict}`});
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a=document.createElement('a'); a.href=url; a.download='safeinvoice-check.png'; a.click();
+      }
+    });
+  }catch(e){ alert('Could not create image. Try screenshot instead.'); }
+}
+function renderHistory(){
+  const hist = JSON.parse(localStorage.getItem('invoiceHistory')||'[]');
+  document.getElementById('histCount').textContent = hist.length;
+  const list = document.getElementById('historyList');
+  if(hist.length===0){ list.innerHTML='<p style="text-align:center;color:var(--muted)">No checks yet.</p>'; return; }
+  list.innerHTML = hist.map((h,i)=>{
+    const pill = h.verdict==='SAFE'?'safe':h.verdict==='HIGH RISK'?'danger':'warn';
+    return `<div class="history-item"><span class="pill ${pill}">${h.verdict} • ${h.score}/100</span><br><b>${h.company}</b><p>${h.date} • ${h.email}</p><p>${h.flags.length?h.flags.join(' | '):'No red flags'}</p><button class="btn-white" onclick="loadHistory(${i})">Load Again</button></div>`;
+  }).join('');
+}
+function loadHistory(i){
+  const hist = JSON.parse(localStorage.getItem('invoiceHistory')||'[]');
+  const h = hist[i]; if(!h) return;
+  document.getElementById('companyName').value = h.company;
+  document.getElementById('senderEmail').value = h.email;
+  showTab('check'); window.scrollTo(0,0);
+}
+function clearHistory(){ if(confirm('Delete all history?')){ localStorage.removeItem('invoiceHistory'); renderHistory(); } }
+function clearForm(){ ['invoiceText','companyName','bankName','iban','senderEmail','websiteDomain'].forEach(id=>document.getElementById(id).value=''); document.getElementById('result').style.display='none'; document.getElementById('shareBtn').style.display='none'; document.getElementById('preview').style.display='none'; }
+function exportCSV(){
+  const hist = JSON.parse(localStorage.getItem('invoiceHistory')||'[]');
+  if(!hist.length){ alert('No history to export'); return; }
+  let csv='Date,Company,Email,Score,Verdict,Flags\n';
+  hist.forEach(h=>{ csv+=`"${h.date}","${h.company}","${h.email}",${h.score},"${h.verdict}","${h.flags.join('; ')}"\n`; });
+  const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='safeinvoice-history.csv'; a.click();
+}
+document.getElementById('histCount').textContent = JSON.parse(localStorage.getItem('invoiceHistory')||'[]').length;
 </script>
 </body>
 </html>
