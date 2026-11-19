@@ -14,19 +14,21 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,san
 .card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:12px}
 .label{font-size:13px;font-weight:700;margin:12px 0 6px}
 .label:first-child{margin-top:0}
+.hint{font-size:12px;color:#666;margin:-2px 0 6px}
 input,textarea,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:12px;font-size:15px;outline:none}
 input:focus,textarea:focus,select:focus{border-color:#000}
-textarea{min-height:140px;resize:vertical}
+textarea{min-height:120px;resize:vertical}
 .btn{width:100%;padding:15px;border:none;border-radius:12px;background:#000;color:#fff;font-size:16px;font-weight:700;margin-top:14px}
 .btn:active{opacity:.85}
 .result{margin-top:14px;border-radius:12px;padding:14px;font-size:14px;line-height:1.6;display:none}
 .result.safe{background:#e8f8ec;border:1px solid #b6e3c0}
 .result.danger{background:#fdecec;border:1px solid #f5b5b5}
+.result.warn{background:#fff8e1;border:1px solid #e6c87a}
 .result h3{margin:0 0 8px;font-size:16px}
 .small{font-size:12px;color:#666;text-align:center;margin-top:14px;line-height:1.5}
 .row{display:flex;gap:10px}
 .row>div{flex:1}
-.tag{display:inline-block;font-size:11px;padding:4px 8px;border-radius:20px;background:#eef2ff;color:#333;margin:2px 2px 0 0}
+.score{font-size:28px;font-weight:800;margin:4px 0}
 </style>
 </head>
 <body>
@@ -47,7 +49,7 @@ textarea{min-height:140px;resize:vertical}
     <div class="label">3. Bank account name (beneficiary)</div>
     <input id="bankName" placeholder="e.g. John Smith or ABC Ltd">
 
-    <div class="label">4. IBAN / Account country</div>
+    <div class="label">4. IBAN / Bank country</div>
     <div class="row">
       <div><input id="iban" placeholder="IBAN e.g. DE89..."></div>
       <div>
@@ -68,6 +70,11 @@ textarea{min-height:140px;resize:vertical}
       </div>
     </div>
 
+    <div class="label">5. Email check (NEW)</div>
+    <div class="hint">Type the sender email and the real company website domain</div>
+    <input id="senderEmail" placeholder="Sender email e.g. sales@qvs-trading.com" style="margin-bottom:10px">
+    <input id="websiteDomain" placeholder="Official website e.g. qvs-trading.com">
+
     <button class="btn" onclick="checkInvoice()">Check Invoice →</button>
     <div id="result" class="result"></div>
   </div>
@@ -76,9 +83,13 @@ textarea{min-height:140px;resize:vertical}
 
 <script>
 const countryNames = {DE:'Germany',GB:'UK',FR:'France',IT:'Italy',ES:'Spain',NL:'Netherlands',AE:'UAE',US:'USA',TR:'Turkey',CN:'China'};
-
-function cleanName(s){
-  return s.toLowerCase().replace(/ltd|limited|llc|inc|gmbh|co\.|company|trading|group/g,'').replace(/[^a-z0-9 ]/g,'').trim();
+function cleanName(s){ return s.toLowerCase().replace(/ltd|limited|llc|inc|gmbh|co\.|company|trading|group/g,'').replace(/[^a-z0-9 ]/g,'').trim(); }
+function getDomain(email){
+  const m = email.trim().toLowerCase().match(/@([a-z0-9.-]+)/);
+  return m ? m[1] : '';
+}
+function cleanDomain(d){
+  return d.trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*$/,'');
 }
 function checkInvoice(){
   const text = document.getElementById('invoiceText').value.toLowerCase();
@@ -86,10 +97,13 @@ function checkInvoice(){
   const beneficiary = document.getElementById('bankName').value.trim();
   const iban = document.getElementById('iban').value.trim().toUpperCase().replace(/\s/g,'');
   const bankCountry = document.getElementById('bankCountry').value;
+  const senderEmail = document.getElementById('senderEmail').value.trim();
+  const websiteDomain = cleanDomain(document.getElementById('websiteDomain').value);
   const box = document.getElementById('result');
   box.style.display='block';
   let flags = [];
   let infos = [];
+  let score = 100;
 
   if(!text.trim()){
     box.className='result danger';
@@ -97,48 +111,71 @@ function checkInvoice(){
     return;
   }
 
-  // Old checks
-  if(text.includes('myshopify') || text.includes('shopify') || text.includes('pay by link') || text.includes('pay by qr'))
-    flags.push('Pay-by-link / Shopify checkout for B2B invoice - real B2B uses bank transfer');
-  if(text.includes('account might be change') || text.includes('might be change') || text.includes('account might change') || text.includes('account may change'))
-    flags.push('Bank account "might change" - classic scam line');
-  if(text.includes('passport'))
-    flags.push('Passport number on invoice - real invoices do not include this');
-  if(text.includes('cis') || text.includes('contact of issuer'))
-    flags.push('CIS provided by sender - do not trust it. Verify via bank official website only');
+  if(text.includes('myshopify') || text.includes('shopify') || text.includes('pay by link') || text.includes('pay by qr')){
+    flags.push('Pay-by-link / Shopify checkout for B2B invoice - real B2B uses bank transfer'); score-=30;
+  }
+  if(text.includes('account might be change') || text.includes('might be change') || text.includes('account might change') || text.includes('account may change')){
+    flags.push('Bank account "might change" - classic scam line'); score-=30;
+  }
+  if(text.includes('passport')){
+    flags.push('Passport number on invoice - real invoices do not include this'); score-=20;
+  }
+  if(text.includes('cis') || text.includes('contact of issuer')){
+    flags.push('CIS provided by sender - do not trust it'); score-=10;
+  }
 
-  // NEW 1: Company vs Beneficiary mismatch
+  // Company vs Beneficiary
   if(company && beneficiary){
     const c = cleanName(company);
     const b = cleanName(beneficiary);
     const cWords = c.split(' ').filter(w=>w.length>3);
     const match = cWords.some(w=>b.includes(w));
-    if(!match){
-      flags.push(`Name mismatch: Invoice company is "${company}" but bank account is "${beneficiary}" - real suppliers pay to same company name`);
-    } else {
-      infos.push('Company name matches bank account name');
-    }
+    if(!match){ flags.push(`Name mismatch: Invoice "${company}" but bank account "${beneficiary}"`); score-=25; }
+    else infos.push('Company name matches bank account name');
   }
 
-  // NEW 2: IBAN country vs selected bank country
+  // IBAN
   if(iban.length >= 2 && bankCountry && bankCountry !== 'OTHER'){
     const ibanCountry = iban.slice(0,2);
-    if(ibanCountry !== bankCountry){
-      flags.push(`IBAN country mismatch: IBAN starts with ${ibanCountry} but you selected bank country ${bankCountry} (${countryNames[bankCountry]||bankCountry})`);
-    } else {
-      infos.push(`IBAN country matches: ${ibanCountry} = ${countryNames[bankCountry]||bankCountry}`);
-    }
-    // IBAN length basic check
-    if(iban.length < 15 || iban.length > 34) flags.push('IBAN length looks wrong - should be 15-34 characters');
+    if(ibanCountry !== bankCountry){ flags.push(`IBAN mismatch: IBAN ${ibanCountry} but bank country ${bankCountry} (${countryNames[bankCountry]||bankCountry})`); score-=25; }
+    else infos.push(`IBAN country matches: ${ibanCountry}`);
+    if(iban.length < 15 || iban.length > 34){ flags.push('IBAN length looks wrong (should be 15-34)'); score-=10; }
   }
-  if(iban && !bankCountry) infos.push('Tip: select bank country to check IBAN match');
+
+  // NEW: Email domain check
+  if(senderEmail && websiteDomain){
+    const emailDomain = getDomain(senderEmail);
+    if(!emailDomain){
+      flags.push('Sender email looks invalid - no @domain found'); score-=10;
+    } else if(emailDomain === websiteDomain){
+      infos.push(`Email domain matches website: ${emailDomain}`);
+    } else {
+      // Check free email
+      const free = ['gmail.com','yahoo.com','hotmail.com','outlook.com','protonmail.com','gmx.com','yandex.com','mail.com'];
+      if(free.includes(emailDomain)){
+        flags.push(`Free email used: ${senderEmail} - real B2B company uses @${websiteDomain}, not @${emailDomain}`); score-=30;
+      } else if(emailDomain.endsWith(websiteDomain) || websiteDomain.endsWith(emailDomain)){
+        infos.push(`Email domain similar to website: ${emailDomain} vs ${websiteDomain} - verify carefully`);
+      } else {
+        flags.push(`Email domain mismatch: sender is @${emailDomain} but official website is ${websiteDomain}`); score-=30;
+      }
+    }
+  } else if(senderEmail && !websiteDomain){
+    infos.push('Tip: add official website domain to check email match');
+  }
+
+  if(score<0) score=0;
+  const scoreHtml = `<div class="score">${score}/100</div><div>Trust Score</div>`;
 
   if(flags.length === 0){
     box.className='result safe';
-    box.innerHTML='<h3>✅ No obvious red flags found</h3>' + infos.map(i=>'<div>• '+i+'</div>').join('') + '<br>Still verify bank details on official number before paying.';
-  } else {
+    box.innerHTML = scoreHtml + '<h3>✅ No obvious red flags</h3>' + infos.map(i=>'<div>• '+i+'</div>').join('') + '<br>Still verify on official number before paying.';
+  } else if(score < 50){
     box.className='result danger';
-    box.innerHTML='<h3>⛔ DO NOT PROCEED</h3>' + flags.map(f=>'<div>• '+f+'</div>').join('') + (infos.length?'<br><b>Checks passed:</b><br>'+infos.map(i=>'<div>• '+i+'</div>').join(''):'');
+    box.innerHTML = scoreHtml + '<h3>⛔ DO NOT PROCEED - HIGH RISK</h3>' + flags.map(f=>'<div>• '+f+'</div>').join('') + (infos.length?'<br><b>Passed:</b><br>'+infos.map(i=>'<div>• '+i+'</div>').join(''):'');
+  } else {
+    box.className='result warn';
+    box.innerHTML = scoreHtml + '<h3>⚠️ CAUTION - Check These</h3>' + flags.map(f=>'<div>• '+f+'</div>').join('') + (infos.length?'<br><b>Passed:</b><br>'+infos.map(i=>'<div>• '+i+'</div>').join(''):'');
   }
   window.scrollTo({top: document.body.scrollHeight, behavior:'smooth'});
 }
